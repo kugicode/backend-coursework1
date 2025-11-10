@@ -1,5 +1,10 @@
 //import express
 const express = require('express');
+// a node.js utility from combining file and directory paths
+const path = require('path');
+//interacting with the file system.
+const fs = require('fs');
+
 const app = express();
 //port number
 const PORT = 3000;
@@ -15,7 +20,22 @@ const loggerMiddleware = (req, res, next) => {
 
 //using the loggerMiddleware.
 app.use(loggerMiddleware);
-app.use(express.static('images'));
+
+app.use('/images', (req, res, next) => {
+    //Get the full path for the images
+    const filePath = path.join(__dirname, 'public', req.url);
+    //check if the image file located in public exists and not the root directory
+    if(fs.existsSync(filePath) && req.url !== '/'){
+        next();
+    }
+    else{
+        //send the error if no file exists!
+        res.status(404).send('Error: image file not found as requested.');
+    }
+});
+//Static file server
+app.use('/images', express.static('public'));
+
 
 //simple route
 app.get('/', (req, res) => {
