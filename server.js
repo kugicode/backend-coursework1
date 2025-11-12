@@ -4,6 +4,8 @@ const express = require('express');
 const path = require('path');
 //interacting with the file system.
 const fs = require('fs');
+//Import the database connections functions
+const { connectToDb } = require('./db');
 
 const app = express();
 //port number
@@ -41,7 +43,14 @@ app.use('/images', express.static('public'));
 app.get('/', (req, res) => {
     res.send("Hello from full stack backend server!");
 });
-// start the server
-app.listen(PORT, () => {
-    console.log(`Server is listening on http://localhost:${PORT}`);
+
+// start the databse connection 
+connectToDb()
+.then((dbInstance) => {
+    app.listen(PORT , () => {
+        console.log(`Server is listening on http://localhost:${PORT}`)
+    });
+})
+.catch(error => {
+    console.error("Server failed to start due to DB connectio error:", error);
 });
