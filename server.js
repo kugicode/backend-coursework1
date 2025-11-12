@@ -5,7 +5,7 @@ const path = require('path');
 //interacting with the file system.
 const fs = require('fs');
 //Import the database connections functions
-const { connectToDb } = require('./db');
+const { connectToDb, getDb } = require('./db');
 
 const app = express();
 //port number
@@ -40,8 +40,26 @@ app.use('/images', express.static('public'));
 
 
 //simple route
-app.get('/', (req, res) => {
-    res.send("Hello from full stack backend server!");
+// app.get('/', (req, res) => {
+//     res.send("Hello from full stack backend server!");
+// });
+
+app.get('/lessons', async (req, res) => {
+    const db = getDb(); //Get the connected database instance.
+
+    try{
+        const lessons = await db.collection('lesson')
+        .find({}) // Retrieves all documents
+        .toArray() // Converts the mongoDB results into a standard JS Array.
+
+        res.status(200).json(lessons); //send the data back as json
+    }
+
+    catch(error){
+        //error messages if it fails
+        console.error("Error fetching lessons:", error);
+        res.status(404).json({error: "Could not fetch the lessons document."});
+    }
 });
 
 // start the databse connection 
