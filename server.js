@@ -6,6 +6,7 @@ const path = require('path');
 const fs = require('fs');
 //Import the database connections functions
 const { connectToDb, getDb } = require('./db');
+const { error } = require('console');
 
 const app = express();
 //port number
@@ -22,6 +23,9 @@ const loggerMiddleware = (req, res, next) => {
 
 //using the loggerMiddleware.
 app.use(loggerMiddleware);
+
+//Middleware that handels incoming requests for POST/PUT
+app.use(express.json());
 
 app.use('/images', (req, res, next) => {
     //Get the full path for the images
@@ -60,6 +64,44 @@ app.get('/lessons', async (req, res) => {
         console.error("Error fetching lessons:", error);
         res.status(404).json({error: "Could not fetch the lessons document."});
     }
+});
+
+app.post('/order', async (req, res) => {
+    //Get the connected database instance and the order data from the client
+    const db = getDb();
+    const orderData = req.body;
+    //Basic validation: Ensure the client sent all the necessary data fields
+    if(!orderData || !orderData.name || !orderData.phone || !orderData.cart || orderData.cart.length === 0){
+        return res.status(400).json({error: "Order details are incomplete or the cart is empty."});
+    }
+//prepare the required data fields
+    try{
+        const orderToInsert = {
+            name: orderData.name,
+            phone: orderData.phone,
+            //Extract the unique MongoDB IDs and quantities from the cart items:
+            lessonDetails: orderData.cart.map(item => ({
+                lessonId: item._id,
+                quantity: item.quantity
+            })),
+            totalSpaces: orderData.cart.reduce((total, item) => total + item.quantity, 0),
+            data: new Date()
+        };
+        //Insert the order into the order collection
+        const result = await db.collection('order').insertOne(orderToInsert);
+
+        res.status(201).json({
+            message: "Order placed successfully.",
+            orderId: result.insertedId
+        });
+    }
+
+    catch(error){
+        console.error("Error saving order: ", error);
+        res.status(500).json({error: "Could not save the order document."});
+    }
+
+
 });
 
 // start the databse connection 
