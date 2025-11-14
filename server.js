@@ -6,7 +6,8 @@ const path = require('path');
 const fs = require('fs');
 //Import the database connections functions
 const { connectToDb, getDb } = require('./db');
-const { error } = require('console');
+//import the required ObjectId from the native MongoDb driver
+const { ObjectId } = require('mongodb');
 
 const app = express();
 //port number
@@ -101,8 +102,46 @@ app.post('/order', async (req, res) => {
         res.status(500).json({error: "Could not save the order document."});
     }
 
+    });
 
-});
+    app.put('/lessons/:id', async (req, res) => {
+        const db = getDb();
+        const lessonId = req.params.id // Gets the id from the url
+        const updateData = req.body; // Gets the new data
+
+        //Validation check to enure the id is valid
+        if(!lessonId){
+            return res.status(400).json({error: "Lesson id is required for update."});
+        }
+
+        //update document
+        //MongoDb uses $set operator to to make changes without chaning the entire document.
+        const updateDocument = {
+            $set: updateData,
+        };
+
+        //perform the update query
+        try{
+           const result = await db.collection('lesson').updateOne(
+            {_id: new ObjectId(lessonId)}, // finds the lesson by converting the string id to a MongoDb ObjectId
+            updateDocument //Applies the changes
+           ); 
+           //Check if a document was actually updated
+           if(result.matchedCount === 0){
+            res.status(404).json({error: "Lesson not found or ID is invalid"});
+           }
+
+           //send success response
+           res.status(200).json({
+            message: "Lesson has been successfully updated.",
+            lessonModified: result.modifiedCount
+           });
+        }
+        catch(error){
+        console.error("Error updating lesson: ", error);
+        res.status(500).json({error: "Could not update the lesson document!"});
+        }
+    });
 
 // start the databse connection 
 connectToDb()
