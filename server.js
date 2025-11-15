@@ -143,6 +143,46 @@ app.post('/order', async (req, res) => {
         }
     });
 
+    app.get('/search', async (req, res) => {
+        const db = getDb();
+        const searchTerm = req.query.q; //The search term is retrieved from the URL query
+
+        //Validation check
+        if(!searchTerm || searchTerm.trim() === ''){
+            //If search term is empty, then return all lessons!
+            return res.status(200).json([]);
+        }
+
+        //prepare the search query
+        const searchRegex = new RegExp(searchTerm.trim(), 'i'); //Creates a case-insensitive regular expression
+
+        //MongoDB uses the $or operator to check multiple conditions on the same document
+        const searchQuery = {
+        $or: [
+            {subject: {$regex: searchRegex}},
+            {location:{$regex: searchRegex}},
+            //Since price and spaces are numbers in MongoDB, we assume a string match is sufficient for the search logic
+            {price: {$regex: searchRegex}},
+            {spaces :{$regex: searchRegex}},
+
+        ]
+        };
+
+        //perform the database query
+        try{
+            const lessons = await db.collection('lesson')
+            .find(searchQuery) // Finds documents matching any condition in $or
+            .toArray();
+            //Send the data back as json
+            res.status(200).json({lessons});
+        }
+        catch(error){
+            console.error("Error performing search:", error);
+            res.status(404).json({error: "Could not perform the search query."});
+        }
+
+    });
+
 // start the databse connection 
 connectToDb()
 .then((dbInstance) => {
