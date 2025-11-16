@@ -8,10 +8,14 @@ const fs = require('fs');
 const { connectToDb, getDb } = require('./db');
 //import the required ObjectId from the native MongoDb driver
 const { ObjectId } = require('mongodb');
+const cors = require('cors');
 
 const app = express();
 //port number
 const PORT = 3000;
+
+//cors middleware
+app.use(cors()); // This allows all origins (safe for development/testing).
 
 const loggerMiddleware = (req, res, next) => {
     //creates a new javascript date object the contains the current time.
