@@ -1,3 +1,4 @@
+require('dotenv').config();
 //import express
 const express = require('express');
 // a node.js utility from combining file and directory paths
@@ -9,6 +10,9 @@ const { connectToDb, getDb } = require('./db');
 //import the required ObjectId from the native MongoDb driver
 const { ObjectId } = require('mongodb');
 const cors = require('cors');
+
+const { GoogleGenerativeAI } = require('@google/generative-ai');
+const genAi = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 const app = express();
 //port number
@@ -105,7 +109,23 @@ app.post('/order', async (req, res) => {
         console.error("Error saving order: ", error);
         res.status(500).json({error: "Could not save the order document."});
     }
+    });
 
+    app.post('/chat', async (req, res) => {
+        try{
+            const userMessage = req.body.message;
+            const model = genAi.getGenerativeModel({ model: "gemini-2.5-flash" });
+
+            const result = await model.generateContent(userMessage);
+            const response = await result.response;
+            const text = response.text();
+
+            res.json({reply: text});
+        }   
+        catch(error){
+            console.error("An error has occured!", error);
+            res.status(500).json({error: "My brain is hurting! Try again later!"});
+        }
     });
 
     app.put('/lessons/:id', async (req, res) => {
