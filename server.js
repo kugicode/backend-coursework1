@@ -16,7 +16,7 @@ const genAi = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 const app = express();
 //port number
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
 //cors middleware
 app.use(cors()); // This allows all origins (safe for development/testing).
@@ -111,23 +111,22 @@ app.post('/order', async (req, res) => {
     }
     });
 
-    app.post('/chat', async (req, res) => {
-        try{
-            const userMessage = req.body.message;
-            const model = genAi.getGenerativeModel({ model: "gemini-2.5-flash" });
+   app.post('/chat', async (req, res) => {
+    try{
+        const userMessage = req.body.message;
+        const model = genAi.getGenerativeModel({model: "gemini-2.5-flash"}); 
 
-            const result = await model.generateContent(userMessage);
-            const response = await result.response;
-            const text = response.text();
+        const result = await model.generateContent(userMessage);
+        const aiResponse = await result.response; // Changed name to avoid confusion
+        const text = aiResponse.text();
 
-            res.json({reply: text});
-        }   
-        catch(error){
-            console.error("An error has occured!", error);
-            res.status(500).json({error: "My brain is hurting! Try again later!"});
-        }
-    });
-
+        res.json({reply: text}); // Using 'res' to send back to Vue
+    }   
+    catch(error){
+        console.error("An error has occured!", error);
+        res.status(500).json({error: "My brain is hurting! Try again later!"});
+    }
+});
     app.put('/lessons/:id', async (req, res) => {
         const db = getDb();
         const lessonId = req.params.id // Gets the id from the url
@@ -168,44 +167,38 @@ app.post('/order', async (req, res) => {
     });
 
     app.get('/search', async (req, res) => {
-        const db = getDb();
-        const searchTerm = req.query.q; //The search term is retrieved from the URL query
+    const db = getDb();
+    const searchTerm = req.query.q; 
 
-        //Validation check
-        if(!searchTerm || searchTerm.trim() === ''){
-            //If search term is empty, then return all lessons!
-            return res.status(200).json([]);
-        }
+    if(!searchTerm || searchTerm.trim() === ''){
+        return res.status(200).json([]);
+    }
 
-        //prepare the search query
-        const searchRegex = new RegExp(searchTerm.trim(), 'i'); //Creates a case-insensitive regular expression
+    const trimmedSearch = searchTerm.trim();
+    const searchRegex = new RegExp(trimmedSearch, 'i'); 
 
-        //MongoDB uses the $or operator to check multiple conditions on the same document
-        const searchQuery = {
+    const searchQuery = {
         $or: [
+            // String fields (Normal Regex)
             {subject: {$regex: searchRegex}},
             {location:{$regex: searchRegex}},
-            //Since price and spaces are numbers in MongoDB, we assume a string match is sufficient for the search logic
-            {price: {$regex: searchRegex}},
-            {spaces :{$regex: searchRegex}},
-
+            
+            // Number fields (Convert to string first using $where)
+            // This ensures searching "50" finds a price of 50.
+            { $where: `this.price.toString().indexOf('${trimmedSearch}') !== -1` },
+            { $where: `this.spaces.toString().indexOf('${trimmedSearch}') !== -1` }
         ]
-        };
+    };
 
-        //perform the database query
-        try{
-            const lessons = await db.collection('lesson')
-            .find(searchQuery) // Finds documents matching any condition in $or
-            .toArray();
-            //Send the data back as json
-            res.status(200).json({lessons});
-        }
-        catch(error){
-            console.error("Error performing search:", error);
-            res.status(404).json({error: "Could not perform the search query."});
-        }
-
-    });
+    try{
+        const lessons = await db.collection('lesson').find(searchQuery).toArray();
+        res.status(200).json(lessons); // sending array directly is usually better than {lessons} object
+    }
+    catch(error){
+        console.error("Error performing search:", error);
+        res.status(404).json({error: "Could not perform the search query."});
+    }
+});
 
 // start the databse connection 
 connectToDb()

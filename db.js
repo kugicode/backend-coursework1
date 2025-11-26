@@ -18,7 +18,6 @@ let db;
 async function connectToDb(){
     try{
     await client.connect();
-
         db = client.db("Full-Stack-App");
 
         console.log("Connected to MongoDb atlas!");
