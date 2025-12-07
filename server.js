@@ -32,7 +32,6 @@ const loggerMiddleware = (req, res, next) => {
 
 //using the loggerMiddleware.
 app.use(loggerMiddleware);
-
 //Middleware that handels incoming requests for POST/PUT
 app.use(express.json());
 
@@ -91,7 +90,7 @@ app.post('/order', async (req, res) => {
             //Extract the unique MongoDB IDs and quantities from the cart items:
             lessonDetails: orderData.cart.map(item => ({
                 lessonId: item._id,
-                quantity: item.quantity
+                quantity: item.quantity,
             })),
             totalSpaces: orderData.cart.reduce((total, item) => total + item.quantity, 0),
             data: new Date()
