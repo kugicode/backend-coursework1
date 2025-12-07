@@ -173,24 +173,30 @@ app.post('/order', async (req, res) => {
         return res.status(200).json([]);
     }
 
-    const trimmedSearch = searchTerm.trim();
-    const searchRegex = new RegExp(trimmedSearch, 'i'); 
-
-    const searchQuery = {
-        $or: [
-            // String fields (Normal Regex)
-            {subject: {$regex: searchRegex}},
-            {location:{$regex: searchRegex}},
-            
-            // Number fields (Convert to string first using $where)
-            // This ensures searching "50" finds a price of 50.
-            { $where: `this.price.toString().indexOf('${trimmedSearch}') !== -1` },
-            { $where: `this.spaces.toString().indexOf('${trimmedSearch}') !== -1` }
-        ]
-    };
+    const searchRegex = new RegExp(searchTerm.trim(), 'i');
 
     try{
-        const lessons = await db.collection('lesson').find(searchQuery).toArray();
+        // Use Aggregation.
+        const lessons = await db.collection('lesson').aggregate([
+            {
+                // Create temporary string versions of price and spaces
+                $addFields: {
+                    priceStr: {$toString: "$price"},
+                    spacesStr: {$toString: "$spaces"}
+                    }
+                },
+                //Search all fields 
+                {
+                $match: {
+                    $or: [
+                        {subject: {$regex: searchRegex}},
+                        {location: {$regex: searchRegex}},
+                        {priceStr: {$regex: searchRegex}},
+                        {spacesStr: {$regex: searchRegex}}
+                    ]
+                }
+        }
+        ]).toArray();
         res.status(200).json(lessons); // sending array directly is usually better than {lessons} object
     }
     catch(error){
